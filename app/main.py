@@ -1,13 +1,21 @@
-from fastapi import FastAPI
-import redis
-import json
-
-app = FastAPI()
-
-r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+import uuid
 
 @app.post("/add-task")
 def add_task(data: str):
-    task = {"data": data}
+    task_id = str(uuid.uuid4())
+
+    task = {
+        "id": task_id,
+        "data": data,
+        "status": "pending"
+    }
+
     r.lpush("task_queue", json.dumps(task))
-    return {"status": "Task added to queue"}
+    r.set(task_id, json.dumps(task))
+
+    return {"task_id": task_id}
+@app.get("/task-status/{task_id}")
+def get_status(task_id: str):
+    task = r.get(task_id)
+    return json.loads(task) if task else {"error": "Not found"}
+    
